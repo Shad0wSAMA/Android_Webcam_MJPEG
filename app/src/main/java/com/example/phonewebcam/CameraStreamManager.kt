@@ -21,45 +21,74 @@ class CameraStreamManager(
     private val latestJpeg = AtomicReference<ByteArray?>(null)
 
     private var cameraProvider: ProcessCameraProvider? = null
+    private var lifecycleOwner: LifecycleOwner? = null
+    private var currentLensFacing = CameraSelector.LENS_FACING_BACK
 
-    fun start(lifecycleOwner: LifecycleOwner) {
+
+    fun start(owner: LifecycleOwner) {
+        lifecycleOwner = owner
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
+            bindCameraUseCases()
+        }, ContextCompat.getMainExecutor(context))
+    }
+    fun bindCameraUseCases(){
+        var provider = cameraProvider ?: return
+        var owner = lifecycleOwner ?: return
 
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.surfaceProvider = previewView.surfaceProvider
-                }
+        var preview = Preview.Builder()
+            .build()
+            .also{
+                it.surfaceProvider = previewView.surfaceProvider
+            }
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
 
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-                .build()
+        imageAnalysis.setAnalyzer(cameraExecutor){ imageProxy->
+            try{
+                val jpeg = imageProxy.toJpeg(70)
+                latestJpeg.set(jpeg)
+            }catch(e: Exception){
+                e.printStackTrace()
+            }finally{
+                imageProxy.close()
+            }
+        }
 
-            imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                try {
-                    val jpeg = imageProxy.toJpeg(quality = 70)
-                    latestJpeg.set(jpeg)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                } finally {
-                    imageProxy.close()
-                }
+        val cameraSelector = CameraSelector.Builder()
+            .requireLensFacing(currentLensFacing)
+            .build()
+
+        provider.unbindAll()
+        provider.bindToLifecycle(
+            owner,
+            cameraSelector,
+            preview,
+            imageAnalysis
+        )
+
+    }
+
+    fun switchCamera() {
+        currentLensFacing =
+            if (currentLensFacing == CameraSelector.LENS_FACING_BACK) {
+                CameraSelector.LENS_FACING_FRONT
+            } else {
+                CameraSelector.LENS_FACING_BACK
             }
 
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+        bindCameraUseCases()
+    }
 
-            cameraProvider?.unbindAll()
-            cameraProvider?.bindToLifecycle(
-                lifecycleOwner,
-                cameraSelector,
-                preview,
-                imageAnalysis
-            )
-        }, ContextCompat.getMainExecutor(context))
+    fun getCurrentCameraName(): String {
+        return if (currentLensFacing == CameraSelector.LENS_FACING_BACK) {
+            "后置"
+        } else {
+            "前置"
+        }
     }
 
     fun getLatestJpeg(): ByteArray? = latestJpeg.get()

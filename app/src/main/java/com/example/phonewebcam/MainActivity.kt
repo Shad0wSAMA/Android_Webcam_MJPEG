@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.widget.Button
 import android.text.format.Formatter
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvInfo: TextView
 
     private lateinit var streamManager: CameraStreamManager
+
+    private lateinit var btnSwitchCamera: Button
+
     private var server: MjpegHttpServer? = null
 
     private val permissionLauncher =
@@ -34,6 +38,8 @@ class MainActivity : AppCompatActivity() {
 
         previewView = findViewById(R.id.previewView)
         tvInfo = findViewById(R.id.tvInfo)
+        btnSwitchCamera = findViewById(R.id.btnSwitchCamera)
+
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             == PackageManager.PERMISSION_GRANTED
@@ -50,10 +56,18 @@ class MainActivity : AppCompatActivity() {
 
         server = MjpegHttpServer(8080, streamManager).apply { start() }
 
-        val ip = getLocalIpAddress()
-        tvInfo.text = "流地址： http://$ip:8080/mjpeg"
+        updateInfoText()
+
+        btnSwitchCamera.setOnClickListener {
+            streamManager.switchCamera()
+            updateInfoText()
+        }
     }
 
+    private fun updateInfoText() {
+        val ip = getLocalIpAddress()
+        tvInfo.text = "当前摄像头：${streamManager.getCurrentCameraName()}\n流地址：http://$ip:8080/mjpeg"
+    }
     private fun getLocalIpAddress(): String {
         val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         return Formatter.formatIpAddress(wm.connectionInfo.ipAddress)

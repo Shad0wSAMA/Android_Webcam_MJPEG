@@ -12,7 +12,10 @@
     <application
         android:usesCleartextTraffic="true"
         android:label="@string/app_name"
+        android:icon="@mipmap/webcam"
+        android:roundIcon="@mipmap/webcam_round"
         android:theme="@style/Theme.PhoneWebcam">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
