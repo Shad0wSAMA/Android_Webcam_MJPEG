@@ -18,12 +18,46 @@
         android:textColor="#FFFFFF"
         android:text="等待启动..." />
 
-    <Button
-        android:id="@+id/btnSwitchCamera"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:text="切换摄像头" />
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/btnSwitchCamera"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="切换摄像头" />
+
+        <Button
+            android:id="@+id/btnZoomIn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="放大 +" />
+
+        <Button
+            android:id="@+id/btnZoomOut"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="缩小 -" />
+
+        <Button
+            android:id="@+id/btnResetZoom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="重置缩放" />
+
+        <Button
+            android:id="@+id/btnQuality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Quality" />
+    </LinearLayout>
 
 </FrameLayout>

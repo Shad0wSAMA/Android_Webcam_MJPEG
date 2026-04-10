@@ -11,7 +11,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.max
+import kotlin.math.min
 
 class CameraStreamManager(
     private val context: Context,
@@ -22,7 +25,9 @@ class CameraStreamManager(
 
     private var cameraProvider: ProcessCameraProvider? = null
     private var lifecycleOwner: LifecycleOwner? = null
+    private var camera: Camera? = null
     private var currentLensFacing = CameraSelector.LENS_FACING_BACK
+    private val currentJpegQuality = AtomicInteger(70)
 
 
     fun start(owner: LifecycleOwner) {
@@ -49,7 +54,8 @@ class CameraStreamManager(
 
         imageAnalysis.setAnalyzer(cameraExecutor){ imageProxy->
             try{
-                val jpeg = imageProxy.toJpeg(70)
+                val quality = currentJpegQuality.get()
+                val jpeg = imageProxy.toJpeg(quality)
                 latestJpeg.set(jpeg)
             }catch(e: Exception){
                 e.printStackTrace()
@@ -63,7 +69,7 @@ class CameraStreamManager(
             .build()
 
         provider.unbindAll()
-        provider.bindToLifecycle(
+        camera = provider.bindToLifecycle(
             owner,
             cameraSelector,
             preview,
@@ -81,6 +87,52 @@ class CameraStreamManager(
             }
 
         bindCameraUseCases()
+    }
+
+    fun zoomIn() {
+        val current = getCurrentZoomRatio()
+        val maxZoom = getMaxZoomRatio()
+        val newZoom = min(current * 1.2f, maxZoom)
+        camera?.cameraControl?.setZoomRatio(newZoom)
+    }
+
+    fun zoomOut() {
+        val current = getCurrentZoomRatio()
+        val minZoom = getMinZoomRatio()
+        val newZoom = max(current / 1.2f, minZoom)
+        camera?.cameraControl?.setZoomRatio(newZoom)
+    }
+
+    fun setZoomRatio(zoomRatio: Float) {
+        val minZoom = getMinZoomRatio()
+        val maxZoom = getMaxZoomRatio()
+        val clamped = zoomRatio.coerceIn(minZoom, maxZoom)
+        camera?.cameraControl?.setZoomRatio(clamped)
+    }
+
+    fun resetZoom() {
+        camera?.cameraControl?.setZoomRatio(1.0f)
+    }
+
+    fun getCurrentZoomRatio(): Float {
+        return camera?.cameraInfo?.zoomState?.value?.zoomRatio ?: 1.0f
+    }
+
+    fun getMinZoomRatio(): Float {
+        return camera?.cameraInfo?.zoomState?.value?.minZoomRatio ?: 1.0f
+    }
+
+    fun getMaxZoomRatio(): Float {
+        return camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: 1.0f
+    }
+
+    fun setJpegQuality(quality: Int) {
+        val clamped = quality.coerceIn(10, 95)
+        currentJpegQuality.set(clamped)
+    }
+
+    fun getJpegQuality(): Int {
+        return currentJpegQuality.get()
     }
 
     fun getCurrentCameraName(): String {
